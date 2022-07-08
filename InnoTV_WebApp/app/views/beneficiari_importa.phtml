@@ -1,0 +1,109 @@
+<?php
+
+$options = "";
+
+for ($i = date("Y") + 1; $i > date("Y") - 4; $i--) {
+    $options .= "<option" . ($i == date("Y") ? " selected" : "") . ">" . $i . "</option>";
+}
+
+echo "<fieldset>" .
+        "<legend>Importazione beneficiari</legend>" .
+        "<br /><br />" .
+        "<div class=\"mb-3 row\">" .
+            "<div class=\"col-sm-12\">" .
+                "<input type=\"file\" id=\"fupBeneficiari\" name=\"fupBeneficiari\">" .
+            "</div>" .
+        "</div>" .         
+        "<div class=\"mb-3 row\">" .
+            "<label class=\"col-sm-2 col-form-label\">Anno di riferimento</label>" .
+            "<div class=\"col-sm-2\">" .
+                "<select id=\"ddlAnnoImporta\" class=\"form-select\">" . $options . "</select>" .
+            "</div>" .
+        "</div>" .           
+        "<br />" .
+        "<div class=\"mb-3 row\">" .
+            "<div class=\"col-sm-12\">" .
+                "<button class=\"btn btn-primary btnImporta\">Importa</button>" .
+            "</div>" .
+        "</div>" .
+     "</fieldset>";
+
+?>
+
+<script type="text/javascript">
+    $(document).ready(function () {      
+        $(".btnImporta").click(function (e) {
+            e.preventDefault();
+            var file = $("#fupBeneficiari")[0].files[0];
+            if (!file) {
+                Swal.fire({
+                    title: "Errore!",
+                    text: "Caricare il file prima di procedere.",
+                    icon: "error",
+                    confirmButtonText: "Ok"
+                });
+            }
+            else {
+                Swal.fire({
+                    title: "Attenzione!",
+                    text: "Un'eventuale importazione precedente relativa all'anno selezionato verrà sovrascritta: sei sicuro di voler continuare?",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Sì",
+                    cancelButtonText: "No",
+                    confirmButtonColor: "#0d6efd",
+                    cancelButtonColor: "#d33"
+                })
+                .then(function (result) {
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            title: "Operazione in corso",
+                            text: "L'importazione potrebbe richiedere alcuni minuti, attendere...",
+                            icon: "info",
+                            showConfirmButton: false,
+                            allowOutsideClick: false
+                        });
+                        Swal.showLoading();
+                        var dto = new FormData();
+                        dto.append("anno", $("#ddlAnnoImporta").val());
+                        dto.append("token", "<?php echo !empty($_SESSION["user_token"]) ? $_SESSION["user_token"] : ""; ?>");
+                        dto.append("fupBeneficiari", file);
+                        $.ajax({
+                            url: "<?php echo API_URL; ?>beneficiario/importa.php",
+                            type: "POST",
+                            data: dto,
+                            dataType: "json",
+                            contentType: false,
+                            processData: false,
+                            headers: {
+                                "Authorization": make_base_auth("<?php echo API_USER; ?>", "<?php echo API_PW; ?>")
+                            },
+                            success: function (response) {
+                                Swal.fire({
+                                    title: "Operazione completata",
+                                    text: "Importazione avvenuta correttamente.",
+                                    icon: "success",
+                                    confirmButtonText: "Ok"
+                                })
+                                .then(function () {
+                                    $("#fupBeneficiari").val("");
+                                });
+                            },
+                            error: function (response) {
+                                Swal.fire({
+                                    title: "Errore!",
+                                    text: response.responseJSON ? response.responseJSON.error_message : "Si è verificato un errore, contattare gli amministratori.",
+                                    icon: "error",
+                                    confirmButtonText: "Ok"
+                                })
+                                .then(function () {
+                                    $("#fupBeneficiari").val("");
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    });
+</script>

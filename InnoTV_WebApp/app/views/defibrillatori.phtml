@@ -1,0 +1,128 @@
+<script src="https://maps.googleapis.com/maps/api/js?v=3.exp&key=AIzaSyC13FjWRDqT28sRWpZuAkHM9IYezW17zNs"></script>
+
+<fieldset>
+    <legend>Ubicazione defibrillatori</legend>
+    <br /><br />
+    <div id="divRisultati" class="mb-3" style="display: none;">     
+        <div id="paginator"></div>
+        <br /><br />  
+        <table id="tblRisultati" class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr style="text-align: center; vertical-align: middle;">
+                    <th>SETTORE</th>
+                    <th>INDIRIZZO</th>
+                    <th>CIVICO</th>
+                    <th>UBICAZIONE</th>
+                    <th>MARCA</th>
+                    <th>MODELLO</th>
+                    <th>NUM. SERIE</th>
+                    <th>ACCESSIBILITÀ</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody style="text-align: center; vertical-align: middle;"></tbody> 
+        </table>
+        <br />
+        <!-- mappa -->
+        <fieldset id="fldMappa" style="display: none; padding-top: 10px;">
+            <legend id="lgndMappa">Mappa</legend>
+            <br /><br />
+            <div id="divMap" style="height: 800px;"></div>
+        </fieldset>
+    </div>
+    <p id="pNessunRisultato" style="display: none; font-weight: bold;">Nessun risultato disponibile.</p>
+</fieldset>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        var self = this;
+        
+        self.get_defibrillatori = function () {
+            $.ajax({
+                url: "<?php echo API_URL; ?>POI/get_defibrillatori.php",
+                type: "GET",
+                dataType: "json",
+                headers: {
+                    "Authorization": make_base_auth("<?php echo API_USER; ?>", "<?php echo API_PW; ?>")
+                },
+                success: function (response) {
+                    $("#tblRisultati tbody").empty();
+                    if (response.length > 0) {
+                        // paginazione
+                        $("#paginator").pagination({
+                            dataSource: response,
+                            pageNumber: 1,
+                            pageSize: 10,
+                            pageRange: 2,
+                            className: "paginationjs paginationjs-big",
+                            callback: function (data, pagination) {
+                                $("#tblRisultati tbody").empty();
+                                var trHTML = "";
+                                $.each(data, function (i, item) {
+                                    var ubicazione = item.indirizzo + (item.civico ? " - n. " + item.civico : "") + (item.ubicazione ? " - " + item.ubicazione : ""); 
+                                    trHTML += "<tr><td>" + item.settore + 
+                                              "</td><td>" + item.indirizzo +
+                                              "</td><td>" + item.civico +
+                                              "</td><td>" + item.ubicazione +
+                                              "</td><td>" + item.marca +
+                                              "</td><td>" + item.modello +
+                                              "</td><td>" + item.num_serie +
+                                              "</td><td>" + item.accessibilita +
+                                              "</td><td>" + "<a href=\"#\" data-ubicazione=\"" + ubicazione + "\" data-lat=\"" + item.latitudine + "\" data-long=\"" + item.longitudine + "\" class=\"imgMarker\" title=\"Visualizza in mappa\"><img src=\"inc\\images\\marker32.png\" /></a>" +
+                                              "</td></tr>";
+                                });
+                                $("#tblRisultati tbody").append(trHTML);
+                            }
+                        });                 
+                        $("#pNessunRisultato").hide();
+                        $("#divRisultati").show();
+                    }
+                    else {
+                        $("#pNessunRisultato").show();
+                        $("#divRisultati").hide();
+                    }
+                },
+                error: function (response) {
+                    Swal.fire({
+                        title: "Errore!",
+                        text: response.responseJSON ? response.responseJSON.error_message : "Si è verificato un errore, contattare gli amministratori.",
+                        icon: "error",
+                        confirmButtonText: "Ok"
+                    });
+                }
+            });
+        };
+        
+        self.get_defibrillatori();
+        
+        // MAPPA
+
+        self.map;
+        self.marker;
+
+        self.initMap = function (latitudine, longitudine, ubicazione) {
+            var lat = parseFloat(latitudine);
+            var lng = parseFloat(longitudine);
+            self.map = new google.maps.Map($("#divMap")[0], {
+                zoom: 18,
+                center: { lat: lat, lng: lng }
+            });
+            self.marker = new google.maps.Marker({
+                position: { lat: lat, lng: lng },
+                map: self.map,
+                draggable: false
+            });
+            $("#lgndMappa").html(ubicazione);
+            $("#fldMappa").show();
+            $("html, body").animate({ scrollTop: $("#fldMappa").offset().top }, "slow");
+        };
+        
+        $(document).on("click", ".imgMarker", function (e) {
+            e.preventDefault();
+            var lat = $(this).attr("data-lat");
+            var long = $(this).attr("data-long");
+            var ubicazione = $(this).attr("data-ubicazione");
+            self.initMap(lat, long, ubicazione);
+        });
+    });
+</script>

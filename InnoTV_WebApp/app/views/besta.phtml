@@ -1,0 +1,167 @@
+<script src="https://maps.googleapis.com/maps/api/js?v=3.exp&key=AIzaSyC13FjWRDqT28sRWpZuAkHM9IYezW17zNs"></script>
+
+<fieldset>
+    <legend>Servizi pubblici accessibili</legend>
+    <br /><br />
+    <div class="mb-3 row">
+        <label class="col-sm-2 col-form-label">Tipo servizio</label>
+        <div class="col-sm-3">
+            <select id="ddlTipoServizio" class="form-select">
+                <option value="">-- seleziona --</option>            
+            </select>                    
+        </div>
+    </div>
+    <br />
+    <div class="mb-3 row">
+        <div class="col-sm-12">
+            <button class="btn btn-primary btnAvviaRicercaServizi">Avvia ricerca</button>
+        </div>
+    </div>
+    <br /><br />
+    <div id="divRisultati" class="mb-3" style="display: none;">     
+        <div id="paginator"></div>
+        <br /><br />  
+        <table id="tblRisultati" class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr style="text-align: center; vertical-align: middle;">
+                    <th>NOME</th>
+                    <th>TIPO</th>
+                    <th>INDIRIZZO</th>
+                    <th>RECAPITI</th>
+                    <th>E-MAIL</th>
+                    <th>SITO WEB</th>
+                    <th>NOTE/ORARI</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody style="text-align: center; vertical-align: middle;"></tbody> 
+        </table>
+        <br />
+        <!-- mappa -->
+        <fieldset id="fldMappa" style="display: none; padding-top: 10px;">
+            <legend id="lgndMappa">Mappa</legend>
+            <br /><br />
+            <div id="divMap" style="height: 800px;"></div>
+        </fieldset>
+    </div>
+    <p id="pNessunRisultato" style="display: none; font-weight: bold;">Nessun risultato disponibile.</p>
+</fieldset>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        var self = this;
+        
+        self.get_tipi_servizio = function () {
+            $.ajax({
+                url: "<?php echo API_URL; ?>POI/get_tipi_servizio.php",
+                type: "GET",
+                dataType: "json",
+                headers: {
+                    "Authorization": make_base_auth("<?php echo API_USER; ?>", "<?php echo API_PW; ?>")
+                },
+                success: function (response) {
+                    $.each(response, function (i, item) {
+                        $("#ddlTipoServizio").append("<option>" + item + "</option>");
+                    });
+                },
+                error: function (response) {
+                    Swal.fire({
+                        title: "Errore!",
+                        text: response.responseJSON ? response.responseJSON.error_message : "Si è verificato un errore, contattare gli amministratori.",
+                        icon: "error",
+                        confirmButtonText: "Ok"
+                    });
+                }
+            });
+        };
+        
+        $(".btnAvviaRicercaServizi").click(function (e) {
+            e.preventDefault();
+            var dto = { tipo: $("#ddlTipoServizio").val() };
+            $.ajax({
+                url: "<?php echo API_URL; ?>POI/ricerca_servizi.php",
+                type: "POST",
+                data: dto,
+                dataType: "json",
+                headers: {
+                    "Authorization": make_base_auth("<?php echo API_USER; ?>", "<?php echo API_PW; ?>")
+                },
+                success: function (response) {
+                    $("#tblRisultati tbody").empty();
+                    if (response.length > 0) {
+                        // paginazione
+                        $("#paginator").pagination({
+                            dataSource: response,
+                            pageNumber: 1,
+                            pageSize: 10,
+                            pageRange: 2,
+                            className: "paginationjs paginationjs-big",
+                            callback: function (data, pagination) {
+                                $("#tblRisultati tbody").empty();
+                                var trHTML = "";
+                                $.each(data, function (i, item) {
+                                    trHTML += "<tr><td>" + item.nome +
+                                              "</td><td>" + item.tipo +
+                                              "</td><td>" + item.indirizzo +
+                                              "</td><td>" + item.recapiti +
+                                              "</td><td>" + item.email +
+                                              "</td><td>" + (item.sito ? "<a href=\"" + item.sito + "\" target=\"_blank\">" + item.sito + "</a>" : "") +
+                                              "</td><td>" + item.note +
+                                              "</td><td>" + (item.longitudine && item.latitudine ? "<a href=\"#\" data-nome=\"" + item.nome + "\" data-lat=\"" + item.latitudine + "\" data-long=\"" + item.longitudine + "\" class=\"imgMarker\" title=\"Visualizza in mappa\"><img src=\"inc\\images\\marker32.png\" /></a>" : "") +
+                                              "</td></tr>";
+                                });
+                                $("#tblRisultati tbody").append(trHTML);
+                            }
+                        });                 
+                        $("#pNessunRisultato").hide();
+                        $("#divRisultati").show();
+                    }
+                    else {
+                        $("#pNessunRisultato").show();
+                        $("#divRisultati").hide();
+                    }
+                },
+                error: function (response) {
+                    Swal.fire({
+                        title: "Errore!",
+                        text: response.responseJSON ? response.responseJSON.error_message : "Si è verificato un errore, contattare gli amministratori.",
+                        icon: "error",
+                        confirmButtonText: "Ok"
+                    });
+                }
+            });
+        });
+        
+        self.get_tipi_servizio();
+        
+        // MAPPA
+
+        self.map;
+        self.marker;
+
+        self.initMap = function (latitudine, longitudine, nome) {
+            var lat = parseFloat(latitudine);
+            var lng = parseFloat(longitudine);
+            self.map = new google.maps.Map($("#divMap")[0], {
+                zoom: 18,
+                center: { lat: lat, lng: lng }
+            });
+            self.marker = new google.maps.Marker({
+                position: { lat: lat, lng: lng },
+                map: self.map,
+                draggable: false
+            });
+            $("#lgndMappa").html(nome);
+            $("#fldMappa").show();
+            $("html, body").animate({ scrollTop: $("#fldMappa").offset().top }, "slow");
+        };
+        
+        $(document).on("click", ".imgMarker", function (e) {
+            e.preventDefault();
+            var lat = $(this).attr("data-lat");
+            var long = $(this).attr("data-long");
+            var nome = $(this).attr("data-nome");
+            self.initMap(lat, long, nome);
+        });
+    });
+</script>

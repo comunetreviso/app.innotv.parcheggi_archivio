@@ -1,0 +1,75 @@
+<fieldset>
+    <legend>Accesso area riservata</legend>
+    <br /><br />
+    <div class="mb-3 row">
+        <label class="col-sm-2 col-form-label">E-mail</label>
+        <div class="col-sm-4">
+            <input id="txtEmail" type="text" class="form-control">
+        </div>
+    </div>
+    <div class="mb-3 row">
+        <label class="col-sm-2 col-form-label">Password</label>
+        <div class="col-sm-3">
+            <input id="txtPassword" type="password" class="form-control">
+        </div>
+    </div>
+    <br />
+    <div class="mb-3 row">
+        <div class="col-sm-12">
+            <button class="btn btn-primary btnLogin">Accedi</button>
+        </div>
+    </div>
+</fieldset>
+
+<script type="text/javascript">
+    $(document).ready(function () { 
+        $(".btnLogin").click(function (e) {
+            e.preventDefault();
+            var dto = {
+                email: $("#txtEmail").val(),
+                password: $("#txtPassword").val()
+            };
+            $.ajax({
+                url: "<?php echo API_URL; ?>utente/login.php",
+                type: "POST",
+                data: dto,
+                dataType: "json",
+                headers: {
+                    "Authorization": make_base_auth("<?php echo API_USER; ?>", "<?php echo API_PW; ?>")
+                },
+                success: function (response) {
+                    dto = {
+                        user_id: response.user_id,
+                        user_email: response.user_email,
+                        user_token: response.user_token,
+                        user_nominativo: response.user_nominativo
+                    };
+                    $.ajax({
+                        url: "index.php?page=login",
+                        type: "POST",
+                        data: dto,
+                        success: function (response) {
+                            window.location.href = "index.php?page=home";
+                        },
+                        error: function (response) {
+                            Swal.fire({
+                                title: "Errore!",
+                                text: response.responseJSON ? response.responseJSON.error_message : "Si è verificato un errore, contattare gli amministratori.",
+                                icon: "error",
+                                confirmButtonText: "Ok"
+                            });
+                        }
+                    });
+                },
+                error: function (response) {
+                    Swal.fire({
+                        title: "Errore!",
+                        text: response.responseJSON ? response.responseJSON.error_message : "Si è verificato un errore, contattare gli amministratori.",
+                        icon: "error",
+                        confirmButtonText: "Ok"
+                    });
+                }
+            });
+        });       
+    });
+</script>

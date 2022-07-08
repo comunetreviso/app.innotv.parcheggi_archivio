@@ -1,0 +1,134 @@
+<fieldset>
+    <legend>Nomi a Treviso</legend>
+    <br /><br />
+    <div class="mb-3 row">
+        <div class="col-sm-4">
+            <input id="txtNome" type="text" class="form-control" placeholder="digita un nome e selezionalo dall'elenco">
+        </div>
+    </div>
+    <div id="divChartNomi" style="display: none; height: 600px; padding-top: 20px;">
+        <canvas id="chartNomi"></canvas>
+    </div>
+</fieldset>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        var self = this;
+        self.chart = null;
+        
+        self.report_frequenza_nome = function (nome) {
+            $.ajax({
+                url: "<?php echo API_URL; ?>nome/report_frequenza_nomi.php",
+                type: "POST",
+                data: { nome: nome },
+                dataType: "json",
+                headers: {
+                    "Authorization": make_base_auth("<?php echo API_USER; ?>", "<?php echo API_PW; ?>")
+                },
+                success: function (response) {
+                    if (response.length > 0) {
+                        var chartLabels = [];
+                        var chartData = [];
+                        if (self.chart != null) {
+                            $.each(response, function (i, item) {
+                                chartData.push(item.numero);
+                            });
+                            self.chart.data.datasets.push({
+                                label: nome,
+                                data: chartData,
+                                backgroundColor: ["rgba(0, 116, 217, 0.2)", "rgba(255, 65, 54, 0.2)", "rgba(46, 204, 64, 0.2)", "rgba(255, 133, 27, 0.2)", "rgba(127, 219, 255, 0.2)", "rgba(177, 13, 201, 0.2)", "rgba(255, 220, 0, 0.2)", "rgba(0, 31, 63, 0.2)", "rgba(57, 204, 204, 0.2)", "rgba(1, 255, 112, 0.2)", "rgba(133, 20, 75, 0.2)", "rgba(240, 18, 190, 0.2)", "rgba(61, 153, 112, 0.2)", "rgba(17, 17, 17, 0.2)", "rgba(170, 170, 170, 0.2)"],
+                                borderColor: ["rgba(0, 116, 217, 1)", "rgba(255, 65, 54, 1)", "rgba(46, 204, 64, 1)", "rgba(255, 133, 27, 1)", "rgba(127, 219, 255, 1)", "rgba(177, 13, 201, 1)", "rgba(255, 220, 0, 1)", "rgba(0, 31, 63, 1)", "rgba(57, 204, 204, 1)", "rgba(1, 255, 112, 1)", "rgba(133, 20, 75, 1)", "rgba(240, 18, 190, 1)", "rgba(61, 153, 112, 1)", "rgba(17, 17, 17, 1)", "rgba(170, 170, 170, 1)"],
+                                tension: 0.1
+                            });
+                            self.chart.update();
+                        }
+                        else {
+                            $.each(response, function (i, item) {
+                                chartLabels.push(item.anno);
+                                chartData.push(item.numero);
+                            });
+                            self.chart = new Chart($("#chartNomi"), {
+                                type: "line",
+                                data: {
+                                    labels: chartLabels,
+                                    datasets: [{
+                                        label: nome,
+                                        data: chartData,
+                                        backgroundColor: ["rgba(0, 116, 217, 0.2)", "rgba(255, 65, 54, 0.2)", "rgba(46, 204, 64, 0.2)", "rgba(255, 133, 27, 0.2)", "rgba(127, 219, 255, 0.2)", "rgba(177, 13, 201, 0.2)", "rgba(255, 220, 0, 0.2)", "rgba(0, 31, 63, 0.2)", "rgba(57, 204, 204, 0.2)", "rgba(1, 255, 112, 0.2)", "rgba(133, 20, 75, 0.2)", "rgba(240, 18, 190, 0.2)", "rgba(61, 153, 112, 0.2)", "rgba(17, 17, 17, 0.2)", "rgba(170, 170, 170, 0.2)"],
+                                        borderColor: ["rgba(0, 116, 217, 1)", "rgba(255, 65, 54, 1)", "rgba(46, 204, 64, 1)", "rgba(255, 133, 27, 1)", "rgba(127, 219, 255, 1)", "rgba(177, 13, 201, 1)", "rgba(255, 220, 0, 1)", "rgba(0, 31, 63, 1)", "rgba(57, 204, 204, 1)", "rgba(1, 255, 112, 1)", "rgba(133, 20, 75, 1)", "rgba(240, 18, 190, 1)", "rgba(61, 153, 112, 1)", "rgba(17, 17, 17, 1)", "rgba(170, 170, 170, 1)"],
+                                        tension: 0.1
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                        title: {
+                                            display: true,
+                                            text: "REPORT NUM. NASCITE PER NOME ED ANNO",
+                                            padding: {
+                                                top: 10,
+                                                bottom: 30
+                                            },
+                                            font: {
+                                                size: 18
+                                            }
+                                        }
+                                    },
+                                    scales: {
+                                        y: {
+                                            beginAtZero: true
+                                        }
+                                    }
+                                }
+                            });
+                            $("#divChartNomi").show();
+                        }
+                    }
+                },
+                error: function (response) {
+                    Swal.fire({
+                        title: "Errore!",
+                        text: response.responseJSON ? response.responseJSON.error_message : "Si è verificato un errore, contattare gli amministratori.",
+                        icon: "error",
+                        confirmButtonText: "Ok"
+                    });
+                }
+            });
+        };
+        
+        self.get_nomi = function () {
+            $.ajax({
+                url: "<?php echo API_URL; ?>nome/get_nomi.php",
+                type: "GET",
+                dataType: "json",
+                headers: {
+                    "Authorization": make_base_auth("<?php echo API_USER; ?>", "<?php echo API_PW; ?>")
+                },
+                success: function (results) {
+                    $("#txtNome").autocomplete({
+                        source: function (request, response) {
+                            var matcher = new RegExp("^" + $.ui.autocomplete.escapeRegex(request.term), "i");
+                            response($.grep(results, function (item) {
+                                return matcher.test(item);
+                            }));
+                        },
+                        select: function (event, ui) {
+                            self.report_frequenza_nome(ui.item.label);
+                        }
+                    });
+                },
+                error: function (response) {
+                    Swal.fire({
+                        title: "Errore!",
+                        text: response.responseJSON ? response.responseJSON.error_message : "Si è verificato un errore, contattare gli amministratori.",
+                        icon: "error",
+                        confirmButtonText: "Ok"
+                    });
+                }
+            });
+        };
+        
+        self.get_nomi();
+    });
+</script>

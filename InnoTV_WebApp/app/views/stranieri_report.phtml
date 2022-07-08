@@ -1,0 +1,319 @@
+<fieldset>
+    <legend>Report cittadini stranieri</legend>
+    <br /><br />
+    <div class="mb-3 row">
+        <label class="col-sm-2 col-form-label">Tipo report</label>
+        <div class="col-sm-4">
+            <select id="ddlTipoReport" class="form-select">
+                <option value="">-- seleziona --</option>
+                <option value="N">Per nazione</option>
+                <option value="A">Per anno</option>
+            </select>                    
+        </div>
+    </div>
+    <div id="divReportAnno" class="mb-3 row" style="display: none;">
+        <label class="col-sm-2 col-form-label">Anno di riferimento</label>
+        <div class="col-sm-2">
+            <select id="ddlReportAnno" class="form-select">
+                <option value="">-- seleziona --</option>            
+            </select>          
+        </div>
+    </div>
+    <div id="divReportNazione" class="mb-3 row" style="display: none;">
+        <label class="col-sm-2 col-form-label">Nazione</label>
+        <div class="col-sm-4">
+            <select id="ddlReportNazione" class="form-select">
+                <option value="">-- seleziona --</option>            
+            </select>                    
+        </div>
+    </div>
+    <div id="divEstraiReport" style="display: none;">
+        <br />
+        <div class="mb-3 row">
+            <div class="col-sm-12">
+                <button class="btn btn-primary btnEstraiReport">Estrai report</button>
+            </div>
+        </div>
+    </div>
+    <br />
+    <div id="divRisultati" class="mb-3" style="display: none;">     
+        <div id="paginator"></div>
+        <br /><br />  
+        <table id="tblRisultati" class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr style="text-align: center; vertical-align: middle;">
+                    <th>NAZIONE</th>
+                    <th>ANNO DI RIFERIMENTO</th>
+                    <th>NUM. CITTADINI STRANIERI</th>
+                </tr>
+            </thead>
+            <tbody style="text-align: center; vertical-align: middle;"></tbody> 
+        </table>
+        <br />
+        <div id="divChartStranieri" style="height: 600px; padding-top: 20px;">
+            <canvas id="chartStranieri"></canvas>
+        </div>
+    </div>
+    <div id="divNessunReport" style="display: none; font-weight: bold;">
+        Nessun dato disponibile per la generazione del report.
+    </div>
+</fieldset>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        var self = this;
+        
+        self.get_nazioni = function () {
+            $.ajax({
+                url: "<?php echo API_URL; ?>straniero/get_nazioni.php",
+                type: "GET",
+                dataType: "json",
+                headers: {
+                    "Authorization": make_base_auth("<?php echo API_USER; ?>", "<?php echo API_PW; ?>")
+                },
+                success: function (response) {
+                    $.each(response, function (i, item) {
+                        $("#ddlReportNazione").append("<option value='" + item.cod + "'>" + item.nazione + "</option>");
+                    });
+                },
+                error: function (response) {
+                    Swal.fire({
+                        title: "Errore!",
+                        text: response.responseJSON ? response.responseJSON.error_message : "Si è verificato un errore, contattare gli amministratori.",
+                        icon: "error",
+                        confirmButtonText: "Ok"
+                    });
+                }
+            });
+        };
+        
+        self.get_anni_riferimento = function () {
+            $.ajax({
+                url: "<?php echo API_URL; ?>straniero/get_anni_riferimento.php",
+                type: "GET",
+                dataType: "json",
+                headers: {
+                    "Authorization": make_base_auth("<?php echo API_USER; ?>", "<?php echo API_PW; ?>")
+                },
+                success: function (response) {
+                    $.each(response, function (i, item) {
+                        $("#ddlReportAnno").append("<option value='" + item + "'>" + item + "</option>");
+                    });
+                },
+                error: function (response) {
+                    Swal.fire({
+                        title: "Errore!",
+                        text: response.responseJSON ? response.responseJSON.error_message : "Si è verificato un errore, contattare gli amministratori.",
+                        icon: "error",
+                        confirmButtonText: "Ok"
+                    });
+                }
+            });
+        };
+        
+        $("#ddlTipoReport").change(function () {
+            switch ($(this).val()) {
+                case "N": {
+                    $("#divReportAnno").hide();
+                    $("#ddlReportAnno").val("");           
+                    $("#divReportNazione").show();
+                    $("#divEstraiReport").hide();
+                    break;
+                }
+                case "A": {
+                    $("#divReportAnno").show();
+                    $("#divReportNazione").hide();
+                    $("#ddlReportNazione").val("");
+                    $("#divEstraiReport").hide();
+                    break;
+                }
+                default: {
+                    $("#divReportAnno").hide();
+                    $("#divReportNazione").hide();
+                    $("#ddlReportAnno").val("");
+                    $("#ddlReportNazione").val("");
+                    $("#divEstraiReport").hide();
+                    break;
+                }
+            }
+        });
+        
+        $("#ddlReportAnno, #ddlReportNazione").change(function () {
+            if ($(this).val() != "") {
+                $("#divEstraiReport").show();
+            }
+            else {
+                $("#divEstraiReport").hide();
+            }
+        });
+        
+        $(".btnEstraiReport").click(function (e) {
+            e.preventDefault();
+            var url = "";
+            var dto = null;
+            switch ($("#ddlTipoReport").val()) {
+                case "A": {
+                    url = "<?php echo API_URL; ?>straniero/report_anno.php";
+                    dto = { anno: $("#ddlReportAnno").val() };
+                    break;
+                }
+                case "N": {
+                    url = "<?php echo API_URL; ?>straniero/report_nazione.php";
+                    dto = { cod: $("#ddlReportNazione").val() };
+                    break;
+                }
+                default: {
+                    return;
+                }
+            }
+            $.ajax({
+                url: url,
+                type: "POST",
+                data: dto,
+                dataType: "json",
+                headers: {
+                    "Authorization": make_base_auth("<?php echo API_USER; ?>", "<?php echo API_PW; ?>")
+                },
+                success: function (response) {
+                    $("#chartStranieri").remove();
+                    $("#tblRisultati tbody").empty();
+                    if (response.length > 0) {
+                        // paginazione
+                        $("#paginator").pagination({
+                            dataSource: response,
+                            pageNumber: 1,
+                            pageSize: 10,
+                            pageRange: 2,
+                            className: "paginationjs paginationjs-big",
+                            callback: function (data, pagination) {
+                                $("#tblRisultati tbody").empty();
+                                var trHTML = "";
+                                $.each(data, function (i, item) {
+                                    trHTML += "<tr><td>" + item.nazione + 
+                                              "</td><td>" + item.anno +
+                                              "</td><td>" + item.numero +
+                                              "</td></tr>";
+                                });
+                                $("#tblRisultati tbody").append(trHTML);
+                            }
+                        });
+                        var chartLabels = [];
+                        var chartData = [];
+                        $("#divChartStranieri").append("<canvas id=\"chartStranieri\"></canvas>");
+                        var chart = null;
+                        switch ($("#ddlTipoReport").val()) {
+                            case "A": {
+                                $.each(response, function (i, item) {
+                                    var numero = parseInt(item.numero.replace(".", ""));
+                                    if (numero >= 20) {
+                                        chartLabels.push(item.nazione);
+                                        chartData.push(numero);
+                                    }
+                                });
+                                chart = new Chart($("#chartStranieri"), {
+                                    type: "bar",
+                                    data: {
+                                        labels: chartLabels,
+                                        datasets: [{
+                                            label: "NUM. CITTADINI STRANIERI",
+                                            data: chartData,
+                                            backgroundColor: ["rgba(0, 116, 217, 0.2)", "rgba(255, 65, 54, 0.2)", "rgba(46, 204, 64, 0.2)", "rgba(255, 133, 27, 0.2)", "rgba(127, 219, 255, 0.2)", "rgba(177, 13, 201, 0.2)", "rgba(255, 220, 0, 0.2)", "rgba(0, 31, 63, 0.2)", "rgba(57, 204, 204, 0.2)", "rgba(1, 255, 112, 0.2)", "rgba(133, 20, 75, 0.2)", "rgba(240, 18, 190, 0.2)", "rgba(61, 153, 112, 0.2)", "rgba(17, 17, 17, 0.2)", "rgba(170, 170, 170, 0.2)"],
+                                            borderColor: ["rgba(0, 116, 217, 1)", "rgba(255, 65, 54, 1)", "rgba(46, 204, 64, 1)", "rgba(255, 133, 27, 1)", "rgba(127, 219, 255, 1)", "rgba(177, 13, 201, 1)", "rgba(255, 220, 0, 1)", "rgba(0, 31, 63, 1)", "rgba(57, 204, 204, 1)", "rgba(1, 255, 112, 1)", "rgba(133, 20, 75, 1)", "rgba(240, 18, 190, 1)", "rgba(61, 153, 112, 1)", "rgba(17, 17, 17, 1)", "rgba(170, 170, 170, 1)"],
+                                            borderWidth: 1
+                                        }]
+                                    },
+                                    options: {
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        plugins: {
+                                            title: {
+                                                display: true,
+                                                text: "REPORT NUM. CITTADINI STRANIERI - " + $("#ddlReportAnno option:selected").text(),
+                                                padding: {
+                                                    top: 10,
+                                                    bottom: 30
+                                                },
+                                                font: {
+                                                    size: 18
+                                                }
+                                            }
+                                        },
+                                        scales: {
+                                            y: {
+                                                beginAtZero: true
+                                            }
+                                        }
+                                    }
+                                });
+                                break;
+                            }
+                            case "N": {
+                                $.each(response, function (i, item) {
+                                    var numero = parseInt(item.numero.replace(".", ""));
+                                    chartLabels.push(item.anno);
+                                    chartData.push(numero);
+                                });
+                                chart = new Chart($("#chartStranieri"), {
+                                    type: "bar",
+                                    data: {
+                                        labels: chartLabels,
+                                        datasets: [{
+                                            label: "NUM. CITTADINI STRANIERI",
+                                            data: chartData,
+                                            backgroundColor: ["rgba(0, 116, 217, 0.2)", "rgba(255, 65, 54, 0.2)", "rgba(46, 204, 64, 0.2)", "rgba(255, 133, 27, 0.2)", "rgba(127, 219, 255, 0.2)", "rgba(177, 13, 201, 0.2)", "rgba(255, 220, 0, 0.2)", "rgba(0, 31, 63, 0.2)", "rgba(57, 204, 204, 0.2)", "rgba(1, 255, 112, 0.2)", "rgba(133, 20, 75, 0.2)", "rgba(240, 18, 190, 0.2)", "rgba(61, 153, 112, 0.2)", "rgba(17, 17, 17, 0.2)", "rgba(170, 170, 170, 0.2)"],
+                                            borderColor: ["rgba(0, 116, 217, 1)", "rgba(255, 65, 54, 1)", "rgba(46, 204, 64, 1)", "rgba(255, 133, 27, 1)", "rgba(127, 219, 255, 1)", "rgba(177, 13, 201, 1)", "rgba(255, 220, 0, 1)", "rgba(0, 31, 63, 1)", "rgba(57, 204, 204, 1)", "rgba(1, 255, 112, 1)", "rgba(133, 20, 75, 1)", "rgba(240, 18, 190, 1)", "rgba(61, 153, 112, 1)", "rgba(17, 17, 17, 1)", "rgba(170, 170, 170, 1)"],
+                                            borderWidth: 1
+                                        }]
+                                    },
+                                    options: {
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        plugins: {
+                                            title: {
+                                                display: true,
+                                                text: "REPORT NUM. CITTADINI STRANIERI - " + $("#ddlReportNazione option:selected").text(),
+                                                padding: {
+                                                    top: 10,
+                                                    bottom: 30
+                                                },
+                                                font: {
+                                                    size: 18
+                                                }
+                                            }
+                                        },
+                                        scales: {
+                                            y: {
+                                                beginAtZero: true
+                                            }
+                                        }
+                                    }
+                                });
+                                break;
+                            }
+                            default: {
+                                return;
+                            }
+                        }
+                        $("#divNessunReport").hide();
+                        $("#divRisultati").show();
+                    }
+                    else {
+                        $("#divNessunReport").show();
+                        $("#divRisultati").hide();
+                    }
+                },
+                error: function (response) {
+                    Swal.fire({
+                        title: "Errore!",
+                        text: response.responseJSON ? response.responseJSON.error_message : "Si è verificato un errore, contattare gli amministratori.",
+                        icon: "error",
+                        confirmButtonText: "Ok"
+                    });
+                }
+            });
+        });
+        
+        self.get_nazioni();
+        self.get_anni_riferimento();
+    });
+</script>
