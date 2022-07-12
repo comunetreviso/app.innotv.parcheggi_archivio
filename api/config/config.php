@@ -4,11 +4,11 @@ define("ROOT_PATH", realpath(dirname(__FILE__) . "/../"));
 
 // parametri database
 
-define("DB_USER", "usr_bo_inno_tv");
-define("DB_PWD", "password");
-define("DB_HOST", "localhost");
-define("DB_NAME", "bo_inno_tv");
-define("DB_PORT", "3306");
+define("DB_USER", "external");
+define("DB_PWD", "SSaoeAOYBBUbRLkIyB");
+define("DB_HOST", "88.99.25.178");
+define("DB_NAME", "webapp_treviso_backend");
+define("DB_PORT", "33060");
 
 // credenziali API
 
